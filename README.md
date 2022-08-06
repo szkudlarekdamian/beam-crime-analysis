@@ -17,35 +17,26 @@
     under the License.
 -->
 
-# Apache Beam Examples Using SamzaRunner
+# Beam Crime Analysis
 
-The examples in this repository serve to demonstrate
-running Beam pipelines with SamzaRunner locally, in Yarn cluster,
-or in standalone cluster with Zookeeper. More complex pipelines
-can be built from here and run in similar manner.  
+The code in this repository serve to demonstrate running Beam pipelines with SamzaRunner locally, in Yarn cluster,
+or in standalone cluster with Zookeeper.
 
 ### Example Pipelines
 The following examples are included:
 
-1. [`WordCount`](https://github.com/apache/samza-beam-examples/blob/master/src/main/java/org/apache/beam/examples/WordCount.java) reads a file as input (bounded data source), and computes word frequencies. 
+1. [`CrimeAnalysis`](https://github.com/szkudlarekdamian/beam-crime-analysis/blob/master/src/main/java/org/crime/CrimeAnalysis.java) reads a file as input (bounded data source), and computes firstly the number of crimes commited each hour of the day and, secondly the number of crimes committed in private and public schools. 
 
-2. [`KafkaWordCount`](https://github.com/apache/samza-beam-examples/blob/master/src/main/java/org/apache/beam/examples/KafkaWordCount.java) does the same word-count computation but reading from a Kafka stream (unbounded data source). It uses a fixed 10-sec window to aggregate the counts.
+2. [`CrimeAnalysisStream`](https://github.com/szkudlarekdamian/beam-crime-analysis/blob/master/src/main/java/org/crime/CrimeAnalysisStream.java) reads from a Kafka stream (unbounded data source). It uses a sliding 7-day window, with 1-day interval to aggregate the events, and calculates selected statistics on crimes committed in each Chicago district.
 
-### Run the Examples
+### Run the Analysis
 
-Each example can be run locally, in Yarn cluster or in standalone cluster. Here we use KafkaWordCount as an example.
+Each example can be run locally, in Yarn cluster or in standalone cluster.
 
 #### Set Up
 1. Download and install [JDK version 8](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html). Verify that the JAVA_HOME environment variable is set and points to your JDK installation.
 
 2. Download and install [Apache Maven](http://maven.apache.org/download.cgi) by following Maven’s [installation guide](http://maven.apache.org/install.html) for your specific operating system.
-
-Check out the `samza-beam-examples` repo:
-
-```
-$ git clone https://github.com/apache/samza-beam-examples.git
-$ cd samza-beam-examples
-```
 
 A script named "grid" is included in this project which allows you to easily download and install Zookeeper, Kafka, and Yarn.
 You can run the following to bring them all up running in your local machine:
@@ -62,17 +53,12 @@ bring them up separately, e.g.:
 $ scripts/grid install zookeeper
 $ scripts/grid start zookeeper
 ```
-Now let's create a Kafka topic named "input-text" for this example:
-
-```
-$ ./deploy/kafka/bin/kafka-topics.sh  --zookeeper localhost:2181 --create --topic input-text --partitions 10 --replication-factor 1
-```
    
 #### Run Locally
 You can run directly within the project using maven:
 
 ```
-$ mvn compile exec:java -Dexec.mainClass=org.apache.beam.examples.KafkaWordCount \
+$ mvn compile exec:java -Dexec.mainClass=org.crime.CrimeAnalysis \
     -Dexec.args="--runner=SamzaRunner --experiments=use_deprecated_read" -P samza-runner
 ```
 
@@ -82,7 +68,7 @@ After packaging, we deploy and explode the tgz in the deploy folder:
 
 ```
  $ mkdir -p deploy/examples
- $ mvn package && tar -xvf target/samza-beam-examples-0.1-dist.tar.gz -C deploy/examples/
+ $ mvn package && tar -xvf target/beam-crime-analysis-0.1-dist.tar.gz -C deploy/examples/
 ```
 
 #### Run in Standalone Cluster with Zookeeper
@@ -93,7 +79,7 @@ set each Kafka partition in a split, we can set a large "maxSourceParallelism" v
 is the upper bound of the number of splits.
 
 ```
-$ deploy/examples/bin/run-beam-standalone.sh org.apache.beam.examples.KafkaWordCount \
+$ deploy/examples/bin/run-beam-standalone.sh org.crime.CrimeAnalysisStream \
     --configFilePath=$PWD/deploy/examples/config/standalone.properties --maxSourceParallelism=1024
 ```
 
@@ -103,50 +89,9 @@ in Yarn cluster. The config file is provided as `config/yarn.properties`. To run
 KafkaWordCount example in yarn:
 
 ```
-$ deploy/examples/bin/run-beam-yarn.sh org.apache.beam.examples.KafkaWordCount \
+$ deploy/examples/bin/run-beam-yarn.sh org.crime.CrimeAnalysisStream \
     --configFilePath=$PWD/deploy/examples/config/yarn.properties --maxSourceParallelism=1024
 ```
-
-#### Validate the Pipeline Results
-Now the pipeline is deployed to either locally, standalone or Yarn. Let's check out the results. First we start a kakfa consumer to listen to the output:
-
-```
-$ ./deploy/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic word-count --property print.key=true
-```
-
-Then let's publish a few lines to the input Kafka topic:
-
-```
-$ ./deploy/kafka/bin/kafka-console-producer.sh --topic input-text --broker-list localhost:9092
-Nory was a Catholic because her mother was a Catholic, and Nory’s mother was a Catholic because her father was a Catholic, and her father was a Catholic because his mother was a Catholic, or had been.
-```
-
-You should see the word count shows up in the consumer console in about 10 secs:
-
-```
-a       6
-br      1
-mother  3
-was     6
-Catholic        6
-his     1
-Nory    2
-s       1
-father  2
-had     1
-been    1
-and     2
-her     3
-or      1
-because 3
-```
-
-### Beyond Examples
-Feel free to build more complex pipelines based on the examples above, and reach out to us:
-
-* Subscribe and mail to [user@beam.apache.org](mailto:user@beam.apache.org) for any Beam questions.
-
-* Subscribe and mail to [user@samza.apache.org](mailto:user@samza.apache.org) for any Samza questions.
 
 ### More Information
 
